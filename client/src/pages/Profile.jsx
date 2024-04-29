@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react'
-import { useSelector} from 'react-redux';
+import { useDispatch, useSelector} from 'react-redux';
 import { useRef } from 'react';
 import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
-import {app} from '../firebase'
+import {app} from '../firebase';
+import { updateUserStart, updateUserSuccess, updateUserFailed } from '../redux/user/userSlice'
 
 export default function Profile() {
-  const { currentUser } = useSelector((state) => state.user)
+  const { currentUser, loading, error } = useSelector((state) => state.user)
   const fileRef = useRef(null);
   const [file, setFile] = useState(undefined);
   const [filePercentage, setFilePercentage] = useState(0);
   const [fileUploadError, setFileUploadError] = useState(false);
   const [formData, setFormData] = useState({});
-  console.log("currentUser", currentUser);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const dispatch = useDispatch();
+
   useEffect(() => {
     if(file){
       handleFileUpload(file)
@@ -40,10 +43,36 @@ export default function Profile() {
     })
  
   }
+  const handleChange = (e) => {
+    setFormData({...formData, [e.target.id]: e.target.value })
+  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      dispatch(updateUserStart());
+      const res = await fetch(`/api/user/update/${currentUser._id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if(data.success === false) {
+        dispatch(updateUserFailed(data.message));
+        return;
+      }
+
+      dispatch(updateUserSuccess(data))
+      setUpdateSuccess(true)
+    } catch (error) {
+      dispatch(updateUserFailed(error.message))
+    }
+  }
   return (
     <div className='max-w-lg p-3 mx-auto'>
       <h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
-      <form className='flex flex-col gap-4'>
+      <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
         <input 
         onChange={(e) => setFile(e.target.files[0])}
         type="file" 
@@ -74,17 +103,24 @@ export default function Profile() {
         </p>
         <input type='text'  id='username'
         placeholder='username'
+        defaultValue={currentUser.username}
+        onChange={handleChange}
         className='border p-3 rounded-lg'/>
     
-    <input type='email' id='email' placeholder='email'
-    className='border p-3 rounded-lg'/>
+        <input type='email' id='email' 
+        placeholder='email'
+        onChange={handleChange}
+        defaultValue={currentUser.email}
+        className='border p-3 rounded-lg'/>
 
-        <input type='password' id='password' placeholder='password'
+        <input type='password' id='password' 
+        placeholder='password'
+        onChange={handleChange}
         className='border p-3 rounded-lg'/>
       
-        <button className='bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95
+        <button disabled={loading} className='bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95
         disabled:opacity-80'>
-          update
+          {loading ? 'Loading...' : 'Update'}
         </button>
       </form>
       <div className='flex justify-between mt-5'>
@@ -95,6 +131,8 @@ export default function Profile() {
           Sign out
         </span>
       </div>
+      <p className='text-red-700 mt-5'>{error}</p>
+      <p className='text-green-700 mt-5'>{updateSuccess ? 'User updated successfully' : ''}</p>
     </div>
   )
 }
