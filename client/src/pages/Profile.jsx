@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector} from 'react-redux';
+import { Link } from 'react-router-dom';
 import { useRef } from 'react';
 import { getDownloadURL, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
 import {app} from '../firebase';
@@ -154,7 +155,13 @@ export default function Profile() {
         disabled:opacity-80'>
           {loading ? 'Loading...' : 'Update'}
         </button>
+        <Link to={'/create-listing'} 
+        className='bg-green-700 text-white rounded-lg p-3 uppercase text-center hover:opacity-95
+        disabled:opacity-80'>
+          Create Listing
+        </Link>
       </form>
+      
       <div className='flex justify-between mt-5'>
         <span 
         onClick={handleDeleteUser}
